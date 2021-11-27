@@ -16,17 +16,20 @@ import com.here.android.mpa.common.OnEngineInitListener
 
 import com.here.android.mpa.mapping.AndroidXMapFragment
 import com.here.android.mpa.mapping.Map
+import com.here.android.mpa.mapping.MapMarker
+
 
 
 class MainActivity : AppCompatActivity() {
 
     private var myLocation: Location? = null
     private var fusedLocation: FusedLocationProviderClient? = null
-
     private var mapFragment: AndroidXMapFragment? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        supportActionBar?.hide()
         mapFragment =
             supportFragmentManager.findFragmentById(R.id.mapFragment) as AndroidXMapFragment
         fusedLocation = LocationServices.getFusedLocationProviderClient(this)
@@ -56,12 +59,14 @@ class MainActivity : AppCompatActivity() {
                 myLocation = it
                 mapFragment!!.init { error ->
                     if (error == OnEngineInitListener.Error.NONE) {
-                        val map: Map = mapFragment!!.map!!
-                        map.setCenter(GeoCoordinate(it.latitude, it.longitude), Map.Animation.NONE)
-                        map.zoomLevel = map.maxZoomLevel
                         val image = Image()
+                        val map: Map = mapFragment!!.map!!
                         image.setImageResource(R.drawable.marker_blue)
-                        mapFragment!!.positionIndicator?.setMarker(image)
+                        map.setCenter(GeoCoordinate(it.latitude, it.longitude), Map.Animation.NONE)
+                        val marker1 = MapMarker(map.center, image)
+                        marker1.isDraggable = true
+                        map.addMapObject(marker1)
+                        map.zoomLevel = 14.0
                     }
                 }
             }
