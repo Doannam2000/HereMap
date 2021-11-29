@@ -43,7 +43,6 @@ class MainActivity : AppCompatActivity() {
     private var typeVehicle = 0
     private var isDraw = false
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
