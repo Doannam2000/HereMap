@@ -254,7 +254,7 @@ class MainActivity : AppCompatActivity() {
             val position = map!!.pixelToGeo(p)
             clearMap()
             dropMarker(position!!, false)
-            map!!.setCenter(position,Map.Animation.NONE)
+            map!!.setCenter(position, Map.Animation.NONE)
             return false
         }
     }
