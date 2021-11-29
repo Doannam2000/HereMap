@@ -1,7 +1,7 @@
 package com.ddwan.heremap.config
 
 class Constants {
-    companion object{
+    companion object {
         const val LOCATION_REQUEST_CODE = 9001
     }
 }
