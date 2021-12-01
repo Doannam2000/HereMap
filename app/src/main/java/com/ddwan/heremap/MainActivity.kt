@@ -26,29 +26,39 @@ import java.io.IOException
 import kotlin.collections.ArrayList
 import com.here.android.mpa.mapping.MapMarker
 import android.widget.Toast
+import androidx.lifecycle.ViewModelProvider
+import com.ddwan.heremap.viewmodel.MapViewModel
 import com.here.android.mpa.search.ReverseGeocodeRequest
 
 
 class MainActivity : AppCompatActivity() {
 
-    private var myLocation: GeoCoordinate? = null
+    private var typeVehicle = 0
+    private lateinit var findLocation: GeoCoordinate
+    private lateinit var myLocation: GeoCoordinate
+
+    private val mapViewModel by lazy {
+        ViewModelProvider(this).get(MapViewModel::class.java)
+    }
+
     private var fusedLocation: FusedLocationProviderClient? = null
     private var mapFragment: AndroidXMapFragment? = null
     private var map: Map? = null
     private var listSearch = ArrayList<DiscoveryResult>()
     lateinit var adapter: RecyclerViewAdapter
     lateinit var mapRoute: MapRoute
-    private lateinit var findLocation: GeoCoordinate
     private var allObject = ArrayList<MapObject>()
-    private var typeVehicle = 0
     private var isDraw = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         supportActionBar?.hide()
+
         mapFragment =
             supportFragmentManager.findFragmentById(R.id.mapFragment) as AndroidXMapFragment
+
+        observe()
 
         fusedLocation = LocationServices.getFusedLocationProviderClient(this)
 
@@ -92,61 +102,82 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnCar.setOnClickListener {
-            typeVehicle = 0
-            btnBike.setBackgroundColor(Color.WHITE)
-            btnWalk.setBackgroundColor(Color.WHITE)
-            btnCar.setBackgroundColor(Color.parseColor("#D5C5C5"))
-            btnMotorcycle.setBackgroundColor(Color.WHITE)
-            if (isDraw) {
-                clearMap()
-                drawRoute()
-            }
+            mapViewModel.setTypeVehicle(0)
         }
         btnMotorcycle.setOnClickListener {
-            typeVehicle = 1
-            btnBike.setBackgroundColor(Color.WHITE)
-            btnWalk.setBackgroundColor(Color.WHITE)
-            btnCar.setBackgroundColor(Color.WHITE)
-            btnMotorcycle.setBackgroundColor(Color.parseColor("#D5C5C5"))
-            if (isDraw) {
-                clearMap()
-                drawRoute()
-            }
+            mapViewModel.setTypeVehicle(1)
         }
         btnBike.setOnClickListener {
-            typeVehicle = 2
-            btnBike.setBackgroundColor(Color.parseColor("#D5C5C5"))
-            btnWalk.setBackgroundColor(Color.WHITE)
-            btnCar.setBackgroundColor(Color.WHITE)
-            btnMotorcycle.setBackgroundColor(Color.WHITE)
+            mapViewModel.setTypeVehicle(2)
+        }
+        btnWalk.setOnClickListener {
+            mapViewModel.setTypeVehicle(3)
+        }
+
+        btnReverse.setOnClickListener {
             if (isDraw) {
-                clearMap()
+                map!!.removeMapObjects(allObject)
+                allObject.clear()
+                val p = findLocation
+                mapViewModel.setFindLocation(myLocation)
+                mapViewModel.setMyLocation(p)
                 drawRoute()
             }
         }
-        btnWalk.setOnClickListener {
-            typeVehicle = 3
+    }
+
+    private fun observe() {
+        mapViewModel.myLocation.observe(this, {
+            dropMarker(it, true)
+            myLocation = it
+        })
+
+        mapViewModel.findLocation.observe(this, {
+            dropMarker(it, false)
+            findLocation = it
+        })
+
+        mapViewModel.typeVehicle.observe(this, {
             btnBike.setBackgroundColor(Color.WHITE)
             btnWalk.setBackgroundColor(Color.parseColor("#D5C5C5"))
             btnCar.setBackgroundColor(Color.WHITE)
             btnMotorcycle.setBackgroundColor(Color.WHITE)
+            when (it) {
+                0 -> {
+                    typeVehicle = 0
+                    btnBike.setBackgroundColor(Color.WHITE)
+                    btnWalk.setBackgroundColor(Color.WHITE)
+                    btnCar.setBackgroundColor(Color.parseColor("#D5C5C5"))
+                    btnMotorcycle.setBackgroundColor(Color.WHITE)
+                }
+                1 -> {
+                    typeVehicle = 1
+                    btnBike.setBackgroundColor(Color.WHITE)
+                    btnWalk.setBackgroundColor(Color.WHITE)
+                    btnCar.setBackgroundColor(Color.WHITE)
+                    btnMotorcycle.setBackgroundColor(Color.parseColor("#D5C5C5"))
+                }
+                2 -> {
+                    typeVehicle = 2
+                    btnBike.setBackgroundColor(Color.parseColor("#D5C5C5"))
+                    btnWalk.setBackgroundColor(Color.WHITE)
+                    btnCar.setBackgroundColor(Color.WHITE)
+                    btnMotorcycle.setBackgroundColor(Color.WHITE)
+                }
+                3 -> {
+                    typeVehicle = 3
+                    btnBike.setBackgroundColor(Color.WHITE)
+                    btnWalk.setBackgroundColor(Color.parseColor("#D5C5C5"))
+                    btnCar.setBackgroundColor(Color.WHITE)
+                    btnMotorcycle.setBackgroundColor(Color.WHITE)
+                }
+            }
             if (isDraw) {
                 clearMap()
                 drawRoute()
             }
-        }
-        btnReverse.setOnClickListener {
-            if (isDraw) {
-                clearMap()
-                map!!.removeMapObjects(allObject)
-                allObject.clear()
-                val p = myLocation!!
-                myLocation = findLocation
-                dropMarker(myLocation!!, true)
-                dropMarker(p, false)
-                drawRoute()
-            }
-        }
+        })
+
     }
 
     private fun drawRoute() {
@@ -164,7 +195,6 @@ class MainActivity : AppCompatActivity() {
                 img.setImageResource(R.drawable.marker_blue)
             else {
                 img.setImageResource(R.drawable.marker)
-                findLocation = position
             }
         } catch (e: IOException) {
             e.printStackTrace()
@@ -173,7 +203,6 @@ class MainActivity : AppCompatActivity() {
         marker.icon = img
         marker.coordinate = position
         map!!.addMapObject(marker)
-        map!!.zoomLevel = 14.0
         allObject.add(marker)
     }
 
@@ -199,9 +228,9 @@ class MainActivity : AppCompatActivity() {
             clearMap()
             isDraw = false
             val placeLink = listSearch[it] as PlaceLink
-            dropMarker(GeoCoordinate(placeLink.position!!), false)
+            mapViewModel.setFindLocation(GeoCoordinate(placeLink.position!!))
             map!!.setCenter(GeoCoordinate(placeLink.position!!), Map.Animation.NONE)
-            findLocation = GeoCoordinate(placeLink.position!!)
+            map!!.zoomLevel = 13.0
             listLocation.visibility = View.GONE
             listSearch.clear()
             adapter.notifyDataSetChanged()
@@ -217,12 +246,12 @@ class MainActivity : AppCompatActivity() {
         fusedLocation!!.lastLocation.addOnSuccessListener {
             if (it != null) {
                 mapFragment!!.init { error ->
-                    myLocation = GeoCoordinate(it.latitude, it.longitude)
                     if (error == OnEngineInitListener.Error.NONE) {
                         map = mapFragment!!.map!!
-                        map!!.setCenter(myLocation!!,
+                        map!!.setCenter(GeoCoordinate(it.latitude, it.longitude),
                             Map.Animation.NONE)
-                        dropMarker(myLocation!!, true)
+                        map!!.zoomLevel = 13.0
+                        mapViewModel.setMyLocation(GeoCoordinate(it.latitude, it.longitude))
                         mapFragment!!.mapGesture!!.addOnGestureListener(gestureListener, 100, true)
                     }
                 }
@@ -254,7 +283,7 @@ class MainActivity : AppCompatActivity() {
             val position = map!!.pixelToGeo(p)
             clearMap()
             dropMarker(position!!, false)
-            map!!.setCenter(position, Map.Animation.NONE)
+            findLocation = position
             return false
         }
     }
@@ -281,7 +310,7 @@ class MainActivity : AppCompatActivity() {
 
         routePlan.routeOptions = routeOptions
         val startPoint =
-            RouteWaypoint(myLocation!!)
+            RouteWaypoint(myLocation)
         val destination = RouteWaypoint(findLocation)
         routePlan.addWaypoint(startPoint)
         routePlan.addWaypoint(destination)
@@ -323,10 +352,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun clearMap() {
-        allObject.removeAt(0)
         map!!.removeMapObjects(allObject)
         allObject.clear()
-        allObject.addAll(map!!.allMapObjects)
+        dropMarker(myLocation, true)
     }
 
 }
