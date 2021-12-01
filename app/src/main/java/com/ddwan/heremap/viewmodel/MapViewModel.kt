@@ -22,5 +22,4 @@ class MapViewModel : ViewModel() {
         typeVehicle.value = type
     }
 
-
 }
