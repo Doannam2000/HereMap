@@ -189,7 +189,7 @@ class MainActivity : AppCompatActivity() {
         ReverseGeocodeRequest(selectedMarker.coordinate).execute { p0, _ ->
             AlertDialog.Builder(this)
                 .setTitle("Địa chỉ")
-                .setMessage(p0!!.address!!.text)
+                .setMessage(p0?.address!!.text)
                 .setNegativeButton("OK") { _, _ -> }
                 .show()
         }
