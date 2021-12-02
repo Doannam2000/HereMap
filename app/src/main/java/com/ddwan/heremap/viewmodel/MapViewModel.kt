@@ -17,13 +17,13 @@ class MapViewModel : ViewModel() {
 
     var myLocation: GeoCoordinate? = null
     var findLocation: GeoCoordinate? = null
-    var typeVehicle = MutableLiveData<Int>()
     var textBlue = MutableLiveData<String>()
     var textGreen = MutableLiveData<String>()
     var map: Map? = null
     lateinit var mapRoute: MapRoute
     var allObject = ArrayList<MapObject>()
     var isDraw = false
+    var typeVehicle = 0
 
     fun setCenterLocation(location: GeoCoordinate, isMyLocation: Boolean) {
         map!!.setCenter(location, Map.Animation.NONE)
@@ -38,7 +38,7 @@ class MapViewModel : ViewModel() {
     }
 
     private fun getTypeVehicle(): RouteOptions.TransportMode {
-        return when (typeVehicle.value) {
+        return when (typeVehicle) {
             0 -> RouteOptions.TransportMode.CAR
             1 -> RouteOptions.TransportMode.SCOOTER
             2 -> RouteOptions.TransportMode.BICYCLE

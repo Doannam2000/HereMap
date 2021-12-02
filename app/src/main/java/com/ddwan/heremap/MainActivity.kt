@@ -33,7 +33,6 @@ class MainActivity : AppCompatActivity() {
     private val mapViewModel by lazy {
         ViewModelProvider(this).get(MapViewModel::class.java)
     }
-    private var typeVehicle = 0
     lateinit var adapter: RecyclerViewAdapter
     private var fusedLocation: FusedLocationProviderClient? = null
     private var mapFragment: AndroidXMapFragment? = null
@@ -45,10 +44,17 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.hide()
         mapFragment =
             supportFragmentManager.findFragmentById(R.id.mapFragment) as AndroidXMapFragment
+
+        // lắng nghe text khoảng cách - thời gian
         observe()
+
+        // lấy vị trí ban đầu
         fusedLocation = LocationServices.getFusedLocationProviderClient(this)
         getCurrentLocation()
+
+        // khởi tạo recyclerView
         initRecyclerView()
+
         searchView.setOnQueryTextListener(onQueryTextListener)
         btnGuide.setOnClickListener {
             mapViewModel.drawRoute()
@@ -56,16 +62,16 @@ class MainActivity : AppCompatActivity() {
             containTime.visibility = View.VISIBLE
         }
         btnCar.setOnClickListener {
-            mapViewModel.typeVehicle.value = 0
+            setBackGroundVehicle(0)
         }
         btnMotorcycle.setOnClickListener {
-            mapViewModel.typeVehicle.value = 1
+            setBackGroundVehicle(1)
         }
         btnBike.setOnClickListener {
-            mapViewModel.typeVehicle.value = 2
+            setBackGroundVehicle(2)
         }
         btnWalk.setOnClickListener {
-            mapViewModel.typeVehicle.value = 3
+            setBackGroundVehicle(3)
         }
         btnReverse.setOnClickListener {
             mapViewModel.reverse()
@@ -77,47 +83,43 @@ class MainActivity : AppCompatActivity() {
         mapViewModel.textBlue.observe(this, {
             txtTimeBlue.text = it
         })
-
         mapViewModel.textGreen.observe(this, {
             txtTimeGreen.text = it
         })
+    }
 
-        mapViewModel.typeVehicle.observe(this, {
-            when (it) {
-                0 -> {
-                    typeVehicle = 0
-                    btnBike.setBackgroundColor(Color.WHITE)
-                    btnWalk.setBackgroundColor(Color.WHITE)
-                    btnCar.setBackgroundColor(Color.parseColor("#D5C5C5"))
-                    btnMotorcycle.setBackgroundColor(Color.WHITE)
-                }
-                1 -> {
-                    typeVehicle = 1
-                    btnBike.setBackgroundColor(Color.WHITE)
-                    btnWalk.setBackgroundColor(Color.WHITE)
-                    btnCar.setBackgroundColor(Color.WHITE)
-                    btnMotorcycle.setBackgroundColor(Color.parseColor("#D5C5C5"))
-                }
-                2 -> {
-                    typeVehicle = 2
-                    btnBike.setBackgroundColor(Color.parseColor("#D5C5C5"))
-                    btnWalk.setBackgroundColor(Color.WHITE)
-                    btnCar.setBackgroundColor(Color.WHITE)
-                    btnMotorcycle.setBackgroundColor(Color.WHITE)
-                }
-                3 -> {
-                    typeVehicle = 3
-                    btnBike.setBackgroundColor(Color.WHITE)
-                    btnWalk.setBackgroundColor(Color.parseColor("#D5C5C5"))
-                    btnCar.setBackgroundColor(Color.WHITE)
-                    btnMotorcycle.setBackgroundColor(Color.WHITE)
-                }
+    private fun setBackGroundVehicle(type: Int) {
+        mapViewModel.typeVehicle = type
+        when (type) {
+            0 -> {
+                btnBike.setBackgroundColor(Color.WHITE)
+                btnWalk.setBackgroundColor(Color.WHITE)
+                btnCar.setBackgroundColor(Color.parseColor("#D5C5C5"))
+                btnMotorcycle.setBackgroundColor(Color.WHITE)
             }
-            if (mapViewModel.isDraw) {
-                mapViewModel.clearMap()
-                mapViewModel.drawRoute()
+            1 -> {
+                btnBike.setBackgroundColor(Color.WHITE)
+                btnWalk.setBackgroundColor(Color.WHITE)
+                btnCar.setBackgroundColor(Color.WHITE)
+                btnMotorcycle.setBackgroundColor(Color.parseColor("#D5C5C5"))
             }
-        })
+            2 -> {
+                btnBike.setBackgroundColor(Color.parseColor("#D5C5C5"))
+                btnWalk.setBackgroundColor(Color.WHITE)
+                btnCar.setBackgroundColor(Color.WHITE)
+                btnMotorcycle.setBackgroundColor(Color.WHITE)
+            }
+            3 -> {
+                btnBike.setBackgroundColor(Color.WHITE)
+                btnWalk.setBackgroundColor(Color.parseColor("#D5C5C5"))
+                btnCar.setBackgroundColor(Color.WHITE)
+                btnMotorcycle.setBackgroundColor(Color.WHITE)
+            }
+        }
+        if (mapViewModel.isDraw) {
+            mapViewModel.clearMap()
+            mapViewModel.drawRoute()
+        }
     }
 
     private fun getCurrentLocation() {
