@@ -127,10 +127,6 @@ class MainActivity : AppCompatActivity() {
         })
 
         mapViewModel.typeVehicle.observe(this, {
-            btnBike.setBackgroundColor(Color.WHITE)
-            btnWalk.setBackgroundColor(Color.parseColor("#D5C5C5"))
-            btnCar.setBackgroundColor(Color.WHITE)
-            btnMotorcycle.setBackgroundColor(Color.WHITE)
             when (it) {
                 0 -> {
                     typeVehicle = 0
