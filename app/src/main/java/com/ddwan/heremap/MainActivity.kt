@@ -26,6 +26,7 @@ import java.io.IOException
 import kotlin.collections.ArrayList
 import com.here.android.mpa.mapping.MapMarker
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.ViewModelProvider
 import com.ddwan.heremap.viewmodel.MapViewModel
 import com.here.android.mpa.search.ReverseGeocodeRequest
@@ -219,29 +220,32 @@ class MainActivity : AppCompatActivity() {
     private val gestureListener = object :
         MapGesture.OnGestureListener.OnGestureListenerAdapter() {
         override fun onTapEvent(p: PointF): Boolean {
-            val viewObjectList = map!!.getSelectedObjects(p) as ArrayList<ViewObject>
-            for (viewObject in viewObjectList) {
-                if (viewObject.baseType == ViewObject.Type.USER_OBJECT) {
-                    val mapObject = viewObject as MapObject
-                    if (mapObject.type == MapObject.Type.MARKER) {
-                        val selectedMarker = viewObject as MapMarker
-                        ReverseGeocodeRequest(selectedMarker.coordinate).execute { p0, _ ->
-                            Toast.makeText(applicationContext,
-                                p0!!.address!!.text,
-                                Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-            }
+            clickEvent(p)
             return false
         }
 
         override fun onLongPressEvent(p: PointF): Boolean {
-            val position = map!!.pixelToGeo(p)
-            clearMap()
-            dropMarker(position!!, false)
-            findLocation = position
+            clickEvent(p)
+            showDialog()
             return false
+        }
+    }
+
+    private fun clickEvent(p: PointF) {
+        val position = map!!.pixelToGeo(p)
+        clearMap()
+        dropMarker(position!!, false)
+        findLocation = position
+    }
+
+    private fun showDialog() {
+        val selectedMarker = allObject[allObject.size - 1] as MapMarker
+        ReverseGeocodeRequest(selectedMarker.coordinate).execute { p0, _ ->
+            AlertDialog.Builder(this)
+                .setTitle("Địa chỉ")
+                .setMessage(p0!!.address!!.text)
+                .setNegativeButton("OK") { _, _ ->
+                }.show()
         }
     }
 
