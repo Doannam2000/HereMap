@@ -18,11 +18,8 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.here.android.mpa.common.*
 import com.here.android.mpa.mapping.*
-import com.here.android.mpa.mapping.Map
-import com.here.android.mpa.routing.*
 import com.here.android.mpa.search.*
 import kotlinx.android.synthetic.main.activity_main.*
-import java.io.IOException
 import kotlin.collections.ArrayList
 import com.here.android.mpa.mapping.MapMarker
 import androidx.appcompat.app.AlertDialog
@@ -37,16 +34,10 @@ class MainActivity : AppCompatActivity() {
         ViewModelProvider(this).get(MapViewModel::class.java)
     }
     private var typeVehicle = 0
-    private lateinit var findLocation: GeoCoordinate
-    private lateinit var myLocation: GeoCoordinate
     lateinit var adapter: RecyclerViewAdapter
-    lateinit var mapRoute: MapRoute
     private var fusedLocation: FusedLocationProviderClient? = null
     private var mapFragment: AndroidXMapFragment? = null
-    private var map: Map? = null
     private var listSearch = ArrayList<DiscoveryResult>()
-    private var allObject = ArrayList<MapObject>()
-    private var isDraw = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,43 +51,35 @@ class MainActivity : AppCompatActivity() {
         initRecyclerView()
         searchView.setOnQueryTextListener(onQueryTextListener)
         btnGuide.setOnClickListener {
-            if (this::findLocation.isInitialized) {
-                drawRoute()
-            }
+            mapViewModel.drawRoute()
+            containVehicle.visibility = View.VISIBLE
+            containTime.visibility = View.VISIBLE
         }
         btnCar.setOnClickListener {
-            mapViewModel.setTypeVehicle(0)
+            mapViewModel.typeVehicle.value = 0
         }
         btnMotorcycle.setOnClickListener {
-            mapViewModel.setTypeVehicle(1)
+            mapViewModel.typeVehicle.value = 1
         }
         btnBike.setOnClickListener {
-            mapViewModel.setTypeVehicle(2)
+            mapViewModel.typeVehicle.value = 2
         }
         btnWalk.setOnClickListener {
-            mapViewModel.setTypeVehicle(3)
+            mapViewModel.typeVehicle.value = 3
         }
         btnReverse.setOnClickListener {
-            if (isDraw) {
-                map!!.removeMapObjects(allObject)
-                allObject.clear()
-                val p = findLocation
-                mapViewModel.setFindLocation(myLocation)
-                mapViewModel.setMyLocation(p)
-                drawRoute()
-            }
+            mapViewModel.reverse()
+            mapViewModel.drawRoute()
         }
     }
 
     private fun observe() {
-        mapViewModel.myLocation.observe(this, {
-            dropMarker(it, true)
-            myLocation = it
+        mapViewModel.textBlue.observe(this, {
+            txtTimeBlue.text = it
         })
 
-        mapViewModel.findLocation.observe(this, {
-            dropMarker(it, false)
-            findLocation = it
+        mapViewModel.textGreen.observe(this, {
+            txtTimeGreen.text = it
         })
 
         mapViewModel.typeVehicle.observe(this, {
@@ -130,9 +113,9 @@ class MainActivity : AppCompatActivity() {
                     btnMotorcycle.setBackgroundColor(Color.WHITE)
                 }
             }
-            if (isDraw) {
-                clearMap()
-                drawRoute()
+            if (mapViewModel.isDraw) {
+                mapViewModel.clearMap()
+                mapViewModel.drawRoute()
             }
         })
     }
@@ -143,42 +126,15 @@ class MainActivity : AppCompatActivity() {
             if (it != null) {
                 mapFragment!!.init { error ->
                     if (error == OnEngineInitListener.Error.NONE) {
-                        map = mapFragment!!.map!!
-                        map!!.setCenter(GeoCoordinate(it.latitude, it.longitude),
-                            Map.Animation.NONE)
-                        map!!.zoomLevel = 13.0
-                        mapViewModel.setMyLocation(GeoCoordinate(it.latitude, it.longitude))
+                        val location = GeoCoordinate(it.latitude, it.longitude)
+                        mapViewModel.map = mapFragment!!.map
+                        mapViewModel.myLocation = location
+                        mapViewModel.setCenterLocation(location, true)
                         mapFragment!!.mapGesture!!.addOnGestureListener(gestureListener, 100, true)
                     }
                 }
             }
         }
-    }
-
-    private fun drawRoute() {
-        createRoute(findLocation, true)
-        createRoute(findLocation, false)
-        dropMarker(findLocation, false)
-        containVehicle.visibility = View.VISIBLE
-        containTime.visibility = View.VISIBLE
-    }
-
-    private fun dropMarker(position: GeoCoordinate, isMyLocation: Boolean) {
-        val img = Image()
-        try {
-            if (isMyLocation)
-                img.setImageResource(R.drawable.marker_blue)
-            else {
-                img.setImageResource(R.drawable.marker)
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-        val marker = MapMarker()
-        marker.icon = img
-        marker.coordinate = position
-        map!!.addMapObject(marker)
-        allObject.add(marker)
     }
 
     private fun checkPermission() {
@@ -200,12 +156,10 @@ class MainActivity : AppCompatActivity() {
     private fun initRecyclerView() {
         adapter = RecyclerViewAdapter(listSearch)
         adapter.setCallback {
-            clearMap()
-            isDraw = false
+            mapViewModel.clearMap()
             val placeLink = listSearch[it] as PlaceLink
-            mapViewModel.setFindLocation(GeoCoordinate(placeLink.position!!))
-            map!!.setCenter(GeoCoordinate(placeLink.position!!), Map.Animation.NONE)
-            map!!.zoomLevel = 13.0
+            mapViewModel.findLocation = GeoCoordinate(placeLink.position!!)
+            mapViewModel.setCenterLocation(placeLink.position!!, false)
             listLocation.visibility = View.GONE
             listSearch.clear()
             adapter.notifyDataSetChanged()
@@ -219,32 +173,25 @@ class MainActivity : AppCompatActivity() {
     private val gestureListener = object :
         MapGesture.OnGestureListener.OnGestureListenerAdapter() {
         override fun onTapEvent(p: PointF): Boolean {
-            clickEvent(p)
+            mapViewModel.clickEvent(p)
             return false
         }
 
         override fun onLongPressEvent(p: PointF): Boolean {
-            clickEvent(p)
+            mapViewModel.clickEvent(p)
             showDialog()
             return false
         }
     }
 
-    private fun clickEvent(p: PointF) {
-        val position = map!!.pixelToGeo(p)
-        clearMap()
-        dropMarker(position!!, false)
-        findLocation = position
-    }
-
     private fun showDialog() {
-        val selectedMarker = allObject[allObject.size - 1] as MapMarker
+        val selectedMarker = mapViewModel.allObject[mapViewModel.allObject.size - 1] as MapMarker
         ReverseGeocodeRequest(selectedMarker.coordinate).execute { p0, _ ->
             AlertDialog.Builder(this)
                 .setTitle("Địa chỉ")
                 .setMessage(p0!!.address!!.text)
-                .setNegativeButton("OK") { _, _ ->
-                }.show()
+                .setNegativeButton("OK") { _, _ -> }
+                .show()
         }
     }
 
@@ -253,7 +200,7 @@ class MainActivity : AppCompatActivity() {
         override fun onQueryTextSubmit(query: String?): Boolean {
             if (query != null && query != "") {
                 val searchRequest = SearchRequest(query)
-                searchRequest.setSearchCenter(map!!.center)
+                searchRequest.setSearchCenter(mapViewModel.map!!.center)
                 searchRequest.execute { discoveryResultPage, errorCode ->
                     if (errorCode == ErrorCode.NONE) {
                         listSearch.clear()
@@ -275,74 +222,6 @@ class MainActivity : AppCompatActivity() {
             }
             return false
         }
-    }
-
-    private fun createRoute(
-        findLocation: GeoCoordinate,
-        type: Boolean,
-    ) {
-        val coreRouter = CoreRouter()
-        val routePlan = RoutePlan()
-        val routeOptions = RouteOptions()
-        when (typeVehicle) {
-            0 -> routeOptions.transportMode = RouteOptions.TransportMode.CAR
-            1 -> routeOptions.transportMode = RouteOptions.TransportMode.SCOOTER
-            2 -> routeOptions.transportMode = RouteOptions.TransportMode.BICYCLE
-            3 -> routeOptions.transportMode = RouteOptions.TransportMode.PEDESTRIAN
-        }
-        routeOptions.setHighwaysAllowed(true)
-        routeOptions.routeCount = 1
-        if (type)
-            routeOptions.routeType = RouteOptions.Type.SHORTEST
-        else
-            routeOptions.routeType = RouteOptions.Type.FASTEST
-        routePlan.routeOptions = routeOptions
-        val startPoint =
-            RouteWaypoint(myLocation)
-        val destination = RouteWaypoint(findLocation)
-        routePlan.addWaypoint(startPoint)
-        routePlan.addWaypoint(destination)
-        coreRouter.calculateRoute(
-            routePlan,
-            object : Router.Listener<List<RouteResult>, RoutingError> {
-                override fun onProgress(i: Int) {
-                }
-
-                @SuppressLint("SetTextI18n")
-                override fun onCalculateRouteFinished(
-                    routeResults: List<RouteResult>,
-                    routingError: RoutingError,
-                ) {
-                    if (routingError == RoutingError.NONE) {
-                        val route = routeResults[0].route
-                        mapRoute = MapRoute(route)
-                        val duration = route.getTtaExcludingTraffic(Route.WHOLE_ROUTE)!!.duration
-                        if (type) {
-                            mapRoute.color = Color.GREEN
-                            txtTimeGreen.text =
-                                "${route.length / 1000} km, " +
-                                        "${duration / 3600} giờ " +
-                                        "${(duration % 3600) / 60} phút"
-                        } else {
-                            txtTimeBlue.text =
-                                "${route.length / 1000} km, " +
-                                        "${duration / 3600} giờ " +
-                                        "${(duration % 3600) / 60} phút"
-                        }
-                        map!!.addMapObject(mapRoute)
-                        map!!.zoomTo(route.boundingBox!!, Map.Animation.NONE,
-                            Map.MOVE_PRESERVE_ORIENTATION)
-                        allObject.add(mapRoute)
-                        isDraw = true
-                    }
-                }
-            })
-    }
-
-    private fun clearMap() {
-        map!!.removeMapObjects(allObject)
-        allObject.clear()
-        dropMarker(myLocation, true)
     }
 
 }
