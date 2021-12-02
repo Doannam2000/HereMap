@@ -25,7 +25,6 @@ import kotlinx.android.synthetic.main.activity_main.*
 import java.io.IOException
 import kotlin.collections.ArrayList
 import com.here.android.mpa.mapping.MapMarker
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.ViewModelProvider
 import com.ddwan.heremap.viewmodel.MapViewModel
