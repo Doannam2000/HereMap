@@ -58,34 +58,7 @@ class MainActivity : AppCompatActivity() {
         fusedLocation = LocationServices.getFusedLocationProviderClient(this)
         getCurrentLocation()
         initRecyclerView()
-        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            @SuppressLint("NotifyDataSetChanged")
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                if (query != null && query != "") {
-                    val searchRequest = SearchRequest(query)
-                    searchRequest.setSearchCenter(map!!.center)
-                    searchRequest.execute { discoveryResultPage, errorCode ->
-                        if (errorCode == ErrorCode.NONE) {
-                            listSearch.clear()
-                            listSearch.addAll(discoveryResultPage!!.items)
-                            adapter.notifyDataSetChanged()
-                        }
-                    }
-                }
-                return false
-            }
-
-            override fun onQueryTextChange(newText: String?): Boolean {
-                if (newText.equals("")) {
-                    listLocation.visibility = View.GONE
-                } else {
-                    listLocation.visibility = View.VISIBLE
-                    containVehicle.visibility = View.GONE
-                    containTime.visibility = View.GONE
-                }
-                return false
-            }
-        })
+        searchView.setOnQueryTextListener(onQueryTextListener)
         btnGuide.setOnClickListener {
             if (this::findLocation.isInitialized) {
                 drawRoute()
@@ -162,7 +135,6 @@ class MainActivity : AppCompatActivity() {
                 drawRoute()
             }
         })
-
     }
 
     private fun getCurrentLocation() {
@@ -269,6 +241,35 @@ class MainActivity : AppCompatActivity() {
             clearMap()
             dropMarker(position!!, false)
             findLocation = position
+            return false
+        }
+    }
+
+    private val onQueryTextListener = object : SearchView.OnQueryTextListener {
+        @SuppressLint("NotifyDataSetChanged")
+        override fun onQueryTextSubmit(query: String?): Boolean {
+            if (query != null && query != "") {
+                val searchRequest = SearchRequest(query)
+                searchRequest.setSearchCenter(map!!.center)
+                searchRequest.execute { discoveryResultPage, errorCode ->
+                    if (errorCode == ErrorCode.NONE) {
+                        listSearch.clear()
+                        listSearch.addAll(discoveryResultPage!!.items)
+                        adapter.notifyDataSetChanged()
+                    }
+                }
+            }
+            return false
+        }
+
+        override fun onQueryTextChange(newText: String?): Boolean {
+            if (newText.equals("")) {
+                listLocation.visibility = View.GONE
+            } else {
+                listLocation.visibility = View.VISIBLE
+                containVehicle.visibility = View.GONE
+                containTime.visibility = View.GONE
+            }
             return false
         }
     }
