@@ -33,20 +33,18 @@ import com.here.android.mpa.search.ReverseGeocodeRequest
 
 class MainActivity : AppCompatActivity() {
 
-    private var typeVehicle = 0
-    private lateinit var findLocation: GeoCoordinate
-    private lateinit var myLocation: GeoCoordinate
-
     private val mapViewModel by lazy {
         ViewModelProvider(this).get(MapViewModel::class.java)
     }
-
+    private var typeVehicle = 0
+    private lateinit var findLocation: GeoCoordinate
+    private lateinit var myLocation: GeoCoordinate
+    lateinit var adapter: RecyclerViewAdapter
+    lateinit var mapRoute: MapRoute
     private var fusedLocation: FusedLocationProviderClient? = null
     private var mapFragment: AndroidXMapFragment? = null
     private var map: Map? = null
     private var listSearch = ArrayList<DiscoveryResult>()
-    lateinit var adapter: RecyclerViewAdapter
-    lateinit var mapRoute: MapRoute
     private var allObject = ArrayList<MapObject>()
     private var isDraw = false
 
@@ -54,18 +52,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         supportActionBar?.hide()
-
         mapFragment =
             supportFragmentManager.findFragmentById(R.id.mapFragment) as AndroidXMapFragment
-
         observe()
-
         fusedLocation = LocationServices.getFusedLocationProviderClient(this)
-
         getCurrentLocation()
-
         initRecyclerView()
-
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             @SuppressLint("NotifyDataSetChanged")
             override fun onQueryTextSubmit(query: String?): Boolean {
@@ -94,13 +86,11 @@ class MainActivity : AppCompatActivity() {
                 return false
             }
         })
-
         btnGuide.setOnClickListener {
             if (this::findLocation.isInitialized) {
                 drawRoute()
             }
         }
-
         btnCar.setOnClickListener {
             mapViewModel.setTypeVehicle(0)
         }
@@ -113,7 +103,6 @@ class MainActivity : AppCompatActivity() {
         btnWalk.setOnClickListener {
             mapViewModel.setTypeVehicle(3)
         }
-
         btnReverse.setOnClickListener {
             if (isDraw) {
                 map!!.removeMapObjects(allObject)
@@ -180,6 +169,24 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    private fun getCurrentLocation() {
+        checkPermission()
+        fusedLocation!!.lastLocation.addOnSuccessListener {
+            if (it != null) {
+                mapFragment!!.init { error ->
+                    if (error == OnEngineInitListener.Error.NONE) {
+                        map = mapFragment!!.map!!
+                        map!!.setCenter(GeoCoordinate(it.latitude, it.longitude),
+                            Map.Animation.NONE)
+                        map!!.zoomLevel = 13.0
+                        mapViewModel.setMyLocation(GeoCoordinate(it.latitude, it.longitude))
+                        mapFragment!!.mapGesture!!.addOnGestureListener(gestureListener, 100, true)
+                    }
+                }
+            }
+        }
+    }
+
     private fun drawRoute() {
         createRoute(findLocation, true)
         createRoute(findLocation, false)
@@ -241,24 +248,6 @@ class MainActivity : AppCompatActivity() {
             DividerItemDecoration.VERTICAL))
     }
 
-    private fun getCurrentLocation() {
-        checkPermission()
-        fusedLocation!!.lastLocation.addOnSuccessListener {
-            if (it != null) {
-                mapFragment!!.init { error ->
-                    if (error == OnEngineInitListener.Error.NONE) {
-                        map = mapFragment!!.map!!
-                        map!!.setCenter(GeoCoordinate(it.latitude, it.longitude),
-                            Map.Animation.NONE)
-                        map!!.zoomLevel = 13.0
-                        mapViewModel.setMyLocation(GeoCoordinate(it.latitude, it.longitude))
-                        mapFragment!!.mapGesture!!.addOnGestureListener(gestureListener, 100, true)
-                    }
-                }
-            }
-        }
-    }
-
     private val gestureListener = object :
         MapGesture.OnGestureListener.OnGestureListenerAdapter() {
         override fun onTapEvent(p: PointF): Boolean {
@@ -307,7 +296,6 @@ class MainActivity : AppCompatActivity() {
             routeOptions.routeType = RouteOptions.Type.SHORTEST
         else
             routeOptions.routeType = RouteOptions.Type.FASTEST
-
         routePlan.routeOptions = routeOptions
         val startPoint =
             RouteWaypoint(myLocation)
